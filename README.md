@@ -1,6 +1,8 @@
 # Private
 Private GitHub repo
 
+Pretty sure we dont need to be doing one hot encoding (even thought im doing it still) or normalizing (minmaxscale) since were using tree methods.
+
 Considerations & Notes:
 
 - Would be nice to be able to use like 4000 n_estimators; model runs for too long if I try that. So we are at 100.
