@@ -14,8 +14,10 @@ Considerations & Notes:
 - merging tables (this goes along with EDA)
 
 some ideas:
-its not quite clear what these two people are doing for null values in their code, other than that it has some ideas
+its not quite clear what these two people are doing for null values in their code, other than that theres some ideas
 https://www.kaggle.com/ogrellier/good-fun-with-ligthgbm/code - lightgbm mode
 https://www.kaggle.com/shivamb/homecreditrisk-extensive-eda-baseline-model/notebook -lightgbm model
+
 https://www.kaggle.com/eliotbarr/stacking-test-sklearn-xgboost-catboost-lightgbm/code - stacked models for this competition
+
 https://www.kaggle.com/arthurtok/introduction-to-ensembling-stacking-in-python - model stacking tutorial
