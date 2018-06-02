@@ -5,3 +5,5 @@ Private GitHub repo
 Scrapped the stacked model - it wasnt working well and took very long to run
 
 Started work on the NN - hopefully this works better
+
+working on feature engineering
