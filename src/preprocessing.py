@@ -96,7 +96,7 @@ class Preprocessor:
     # ================
 
 
-    def get_application_train_features(self, application_train_name = 'application_train'):
+    def set_application_train_features(self, application_train_name = 'application_train'):
 
         df_application_train = None
         for df in self.datasets:
@@ -110,7 +110,7 @@ class Preprocessor:
             raise Exception('Could not find application_train in Preprocessor.datasets')
 
         # set target variable and join_key
-        df_application_train.target = df_application_train.data['TARGET']
+        # df_application_train.target = df_application_train.data['TARGET']
         df_application_train.join_key = ['SK_ID_CURR']
 
         # set exclude vars
