@@ -14,11 +14,14 @@ DATASET_FILENAMES = []
 class Dataset:
 
 
-    def __init__(self, filename, join_key = None, exclude_vars = [],\
-     cat_vars = [], num_vars = [], binary_vars = []):
-
-        self.name = filename.split('.')[0]
+    def __init__(self, filename = None, join_key = None, exclude_vars = [],\
+     cat_vars = [], num_vars = [], binary_vars = [], data = None):
+        
+        if filename != None:
+            self.name = filename.split('.')[0]
+        
         self.filename = filename
+
         self.join_key = join_key
 
         self.exclude_vars = exclude_vars
@@ -30,7 +33,7 @@ class Dataset:
         self.num_features = None
         self.binary_features = None
 
-        self.data = None
+        self.data = data
         self.features = None
         self.target = None
 
@@ -74,6 +77,20 @@ class Dataset:
                 standardization_map = dict(zip(unique_values),[0,1])
                 s_binary_feature = [standardization_map[x] for x in list(s_binary_feature)]
                 self.data[col] = s_binary_feature
+
+    # returns a modified dataframe that has num var percentiles partitioned by each cat var
+    def get_num_percentiles_partitioned_by_cat_var(self, cat_vars = [], num_vars = []):
+
+        if cat_vars == []:
+            cat_vars = [col for col in self.data.columns if type(self.data[col][0]) == str]
+
+        if num_vars == []:
+            num_vars = [col for col in self.data.columns if type(self.data[col][0]) in [int, float]]
+
+        for cat_var in cat_vars:
+            for num_var in num_vars:
+
+                self.data[str(cat_var) + '_' + str(num_var) + '_rankpartition'] = self.data.groupby(cat_var)[num_var].rank()
         
 
 class Preprocessor:
@@ -84,7 +101,11 @@ class Preprocessor:
         self.datasets = None
 
         self.df_application_train_features = None
+        self.df_bureau_features = None
 
+    # ================
+    # Class-level helper functions
+    # ================
 
     def read_all_data(self, dataset_filenames=[]):
 
@@ -100,13 +121,12 @@ class Preprocessor:
     # application_train
     # ================
 
-
-    def set_application_train_features(self, application_train_name = 'application_train'):
+    def set_application_train_features(self, dataset_name = 'application_train'):
 
         df_application_train = None
         for df in self.datasets:
 
-            if df.name == application_train_name:
+            if df.name == dataset_name:
 
                 df_application_train = df
         
@@ -134,33 +154,10 @@ class Preprocessor:
         # Feature engineering
         # ================
 
-        # returns a modified dataframe that has num var percentiles partitioned by each cat var
-        def num_percentiles_partitioned_by_cat_var(df):
-
-            num_vars = []
-            cat_vars = []
-            for col in df.columns:
-
-                if type(df[col][0]) in (int, float):
-
-                    num_vars.append(col)
-                
-                elif type(df[col][0]) in (str):
-
-                    cat_vars.append(col)
-
-            for cat_var in cat_vars:
-                for num_var in num_vars:
-
-                    df[str(cat_var) + '_' + str(num_var) + '_rankpartition'] = df.groupby(cat_var)[num_var].rank()
-            
-            return df
-
         df_application_train.data['ORGANIZATION_TYPE_GROUP'] = df_application_train.data.ORGANIZATION_TYPE.apply(lambda x: x.split(':')[0].split('Type')[0])
         df_application_train.data['PERC_FAM_MEMBERS_CHILDREN'] = (1.0 * df_application_train.data.CNT_CHILDREN) / df_application_train.data.CNT_FAM_MEMBERS
         
-        # get num var percentiles partitioned by each cat var
-        df_application_train.data = num_percentiles_partitioned_by_cat_var(df_application_train.data)
+        df_application_train.get_num_percentiles_partitioned_by_cat_var()
 
         # ================
         # Standardize binary vars
@@ -175,5 +172,114 @@ class Preprocessor:
 
         self.df_application_train_features = df_application_train.data[[x for x in df_application_train.data.columns if x not in df_application_train.exclude_vars]]
 
+        print('df_application_train preprocessed. df.shape:' + str(df.shape))
         # we can get dummies after concatenating all of the processed datasets
         # self.df_application_train_features = pd.get_dummies(self.df_application_train_features)
+
+
+    def set_bureau_train_features(self, dataset_name = 'bureau'):
+
+        df_bureau = None
+        for df in self.datasets:
+
+            if df.name == dataset_name:
+
+                df_bureau = df
+        
+        if df_bureau = None:
+
+            raise Exception('Could not find application_train in Preprocessor.datasets')
+
+        # ================
+        # Target variable, join key, exclude vars
+        # ================
+
+        df_bureau.join_key = 'SK_ID_CURR'
+
+        # ================
+        # Cleaning
+        # ================
+
+        # ================
+        # Feature engineering
+        # ================
+
+        # get counts of previous loans
+        df_bureau_formatted = pd.DataFrame(df_bureau.groupby(by='SK_ID_CURR')['SK_ID_CURR'].count()).rename(columns={'SK_ID_CURR':'SK_ID_CURR_count'})
+
+        # get counts of former credit, by status
+        # TODO: these functions by need an added 'self'
+        def get_counts_by( df_bureau, feature_agg_col):
+            df_agg = pd.DataFrame(df_bureau.groupby(by=[df_bureau.join_key,feature_agg_col])[feature_agg_col].count()).rename(columns={feature_agg_col:feature_agg_col + '_count'}).reset_index()
+            df_agg.index = df_agg.SK_ID_CURR
+
+            df_feature_count_full = pd.DataFrame()
+            for unique_val in df_bureau[feature_agg_col].unique():
+                df_feature_count = pd.DataFrame(df_agg.loc[df_agg[feature_agg_col] == unique_val, feature_agg_col + '_count'])
+                df_feature_count = df_feature_count.rename(columns={feature_agg_col + '_count':feature_agg_col + '_count_' + unique_val})
+                if len(df_feature_count_full) > 0:
+                    df_feature_count_full = df_feature_count_full.merge(df_feature_count,how='left',left_index=True,right_index=True)
+                else:
+                    df_feature_count_full = df_feature_count[:]
+
+            return df_feature_count_full
+        
+        df_status_count_full = get_counts_by(df_bureau, feature_agg_col = 'CREDIT_ACTIVE')
+
+        df_bureau_formatted.merge(df_status_count_full,how='left',left_index=True,right_index=True)
+
+        # get unique number of currencies that previous credits exist in, for each current application
+        df_bureau_formatted.merge(pd.DataFrame(df_bureau.groupby(by='SK_ID_CURR')['CREDIT_CURRENCY'].nunique()).rename(columns={'CREDIT_CURRENCY':'CREDIT_CURRENCY_unique'}),\
+        how='left',left_index=True,right_index=True)
+
+        # get most recent number of days a credit was extend before the current application
+        df_bureau_formatted.merge(pd.DataFrame(df_bureau.groupby(by='SK_ID_CURR')['DAYS_CREDIT'].min()).rename(columns={'DAYS_CREDIT':'DAYS_CREDIT_min'}),\
+        how='left',left_index=True,right_index=True)
+
+        # TODO: get average number of days in between applications
+
+        # TODO: these functions by need an added 'self'
+        def get_min_average_max( df_bureau_formatted, col, min = True, average = True, max = True):
+            if min:
+                # get min
+                df_bureau_formatted.merge(pd.DataFrame(df_bureau.groupby(by='SK_ID_CURR')[col].min()).rename(columns={col:col+'_min'}),\
+                how='left',left_index=True,right_index=True)
+
+            if average:
+                # get average
+                df_bureau_formatted.merge(pd.DataFrame(df_bureau.groupby(by='SK_ID_CURR')[col].mean()).rename(columns={col:col+'_mean'}),\
+                how='left',left_index=True,right_index=True)
+
+            if max:
+                # get max
+                df_bureau_formatted.merge(pd.DataFrame(df_bureau.groupby(by='SK_ID_CURR')[col].max()).rename(columns={col:col+'_max'}),\
+                how='left',left_index=True,right_index=True)
+
+            return df_bureau_formatted
+
+        # TODO: Not sure if DAYS_CREDIT_UPDATE belongs in here
+        for col in ['CREDIT_DAY_OVERDUE','DAYS_CREDIT_ENDDATE','AMT_CREDIT_MAX_OVERDUE',\
+        'CNT_CREDIT_PROLONG','AMT_CREDIT_SUM','AMT_CREDIT_SUM_DEBT','AMT_CREDIT_SUM_OVERDUE','DAYS_CREDIT_UPDATE',\
+        'AMT_ANNUITY']:
+            df_bureau_formatted = get_min_average_max(df_bureau_formatted,col)
+        
+        df_credit_type_count_full = get_counts_by(df_bureau, feature_agg_col = 'CREDIT_TYPE')
+
+        df_bureau_formatted.merge(df_credit_type_count_full,how='left',left_index=True,right_index=True)
+
+        # ================
+        # Standardize binary vars
+        # ================
+
+        df_bureau_formatted_dataset = Dataset(data=df_bureau_formatted)
+
+        df_bureau_formatted_dataset.discover_binary_vars()
+        df_bureau_formatted_dataset.transform_binary_features()
+
+        # ================
+        # Get final feature set
+        # ================
+
+        self.df_bureau_features = df_bureau_formatted_dataset.data
+
+        print('df_bureau preprocessed. df.shape:' + str(df.shape))
