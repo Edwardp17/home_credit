@@ -35,7 +35,7 @@ for n_folds, (trn_idx, val_idx) in enumerate(folds.split(X)):
            , verbose=100
            , early_stopping_rounds=100
            )
-# Is taking the mean of all predictions better than just predicting on test set?
+           
     sub_preds += clf.predict_proba(test)[:,1] / folds.n_splits
 
 test_preds = sub_preds
