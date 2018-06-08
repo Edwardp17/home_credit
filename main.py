@@ -30,12 +30,12 @@ for n_folds, (trn_idx, val_idx) in enumerate(folds.split(X)):
 )
     
     clf.fit(trn_x, trn_y
-           , eval_set=[(trn_x, trn_y),(val_x, val_y)]
-           , eval_metric='auc'
-           , verbose=100
-           , early_stopping_rounds=100
-           )
-           
+        , eval_set=[(trn_x, trn_y),(val_x, val_y)]
+        , eval_metric='auc'
+        , verbose=100
+        , early_stopping_rounds=100
+        )
+
     sub_preds += clf.predict_proba(test)[:,1] / folds.n_splits
 
 test_preds = sub_preds
