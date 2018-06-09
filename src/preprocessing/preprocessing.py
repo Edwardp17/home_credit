@@ -8,7 +8,7 @@ import pandas as pd
 import featuretools as ft
 from scipy import stats
 
-DATA_PATH = '../../../data/'
+DATA_PATH = '../../data/'
 DATASET_FILENAMES = []
 
 
