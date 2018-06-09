@@ -148,11 +148,11 @@ class Preprocessor:
             elif data.name == 'bureau_balance':
                 bureau_balance = data.data
             elif data.name == 'credit_card_balance':
-                credit_card_balance = data.data
+                cc_bal = data.data
             elif data.name == 'installments_payments':
-                installments_payments = data.data
+                inst = data.data
             elif data.name == 'previous_application':
-                previous_application = data.data
+                prev_app = data.data
         
         train = train_full.drop('TARGET',axis = 1)
         train_y = train_full['TARGET']
@@ -162,46 +162,81 @@ class Preprocessor:
         # Create new entityset
         es = ft.EntitySet(id = 'train')
         print('Creating train entity.')
+        print(str(pd.Timestamp.now()))
         es = es.entity_from_dataframe(entity_id = 'train', dataframe = train, index = 'SK_ID_CURR')
         print('Creating bureau entity.')
+        print(str(pd.Timestamp.now()))
         es = es.entity_from_dataframe(entity_id = 'bureau', dataframe = bureau, index = 'SK_ID_BUREAU')
         print('Creating bureau_bal entity.')
+        print(str(pd.Timestamp.now()))
         es = es.entity_from_dataframe(entity_id = 'bureau_bal', dataframe = bureau_balance, make_index = True, index = 'bureau_bal_id')
         print('Creating pos entity.')
+        print(str(pd.Timestamp.now()))
         es = es.entity_from_dataframe(entity_id = 'pos', dataframe = pos, make_index = True, index = 'pos_id')
         print('Creating cc_bal entity.')
+        print(str(pd.Timestamp.now()))
         es = es.entity_from_dataframe(entity_id = 'cc_bal', dataframe = cc_bal, make_index = True, index = 'cc_bal_id')
         print('Creating inst entity.')
+        print(str(pd.Timestamp.now()))
         es = es.entity_from_dataframe(entity_id = 'inst', dataframe = inst, make_index = True, index = 'inst_id')
         print('Creating prev_app entity.')
+        print(str(pd.Timestamp.now()))
         es = es.entity_from_dataframe(entity_id = 'prev_app', dataframe = prev_app, index = 'SK_ID_PREV')
 
         print('Creating relationships.')
+        print(str(pd.Timestamp.now()))
 
         # Create relationships
+        print('Creating r_train_bureau.')
+        print(str(pd.Timestamp.now()))
         r_train_bureau = ft.Relationship(es['train']['SK_ID_CURR'], es['bureau']['SK_ID_CURR'])
         es = es.add_relationship(r_train_bureau)
         
+        print('Creating r_bureau_bureau_bal.')
+        print(str(pd.Timestamp.now()))
         r_bureau_bureau_bal = ft.Relationship(es['bureau']['SK_ID_BUREAU'], es['bureau_bal']['SK_ID_BUREAU'])
         es = es.add_relationship(r_bureau_bureau_bal)
         
+        print('Creating r_train_pos.')
+        print(str(pd.Timestamp.now()))
         r_train_pos = ft.Relationship(es['train']['SK_ID_CURR'], es['pos']['SK_ID_CURR'])
         es = es.add_relationship(r_train_pos)
         
+        print('Creating r_train_cc_bal.')
+        print(str(pd.Timestamp.now()))
         r_train_cc_bal = ft.Relationship(es['train']['SK_ID_CURR'], es['cc_bal']['SK_ID_CURR'])
         es = es.add_relationship(r_train_cc_bal)
-        
-        r_train_pos = ft.Relationship(es['train']['SK_ID_CURR'], es['pos']['SK_ID_CURR'])
-        es = es.add_relationship(r_train_pos)
 
+        print('Creating r_train_inst.')
+        print(str(pd.Timestamp.now()))
         r_train_inst = ft.Relationship(es['train']['SK_ID_CURR'], es['inst']['SK_ID_CURR'])
         es = es.add_relationship(r_train_inst)
 
+        print('Creating r_train_prev_app.')
+        print(str(pd.Timestamp.now()))
         r_train_prev_app = ft.Relationship(es['train']['SK_ID_CURR'], es['prev_app']['SK_ID_CURR'])
         es = es.add_relationship(r_train_prev_app)
 
+        print('Creating r_prev_app_pos.')
+        print(str(pd.Timestamp.now()))
+        r_prev_app_pos = ft.Relationship(es['prev_app']['SK_ID_PREV'], es['pos']['SK_ID_PREV'])
+        es = es.add_relationship(r_prev_app_pos)
+
+        print('Creating r_prev_app_inst.')
+        print(str(pd.Timestamp.now()))
+        r_prev_app_inst = ft.Relationship(es['prev_app']['SK_ID_PREV'], es['inst']['SK_ID_PREV'])
+        es = es.add_relationship(r_prev_app_inst)
+
+        print('Creating r_prev_app_cc_bal.')
+        print(str(pd.Timestamp.now()))
+        r_prev_app_cc_bal = ft.Relationship(es['prev_app']['SK_ID_PREV'], es['cc_bal']['SK_ID_PREV'])
+        es = es.add_relationship(r_prev_app_cc_bal)
+        
         # Create new features using specified primitives
         # Documentation: https://docs.featuretools.com/generated/featuretools.dfs.html
+
+        print('Creating actual features.')
+        print(str(pd.Timestamp.now()))
         features, feature_names = ft.dfs(entityset = es, target_entity = 'train', \
         agg_primitives = ['mean', 'max', 'last'], \
         trans_primitives = ['years', 'month', 'subtract', 'divide'])
