@@ -157,16 +157,23 @@ class Preprocessor:
         train = train_full.drop('TARGET',axis = 1)
         train_y = train_full['TARGET']
 
-        print('Creating entity.')
+        print('Creating entity set.')
 
         # Create new entityset
         es = ft.EntitySet(id = 'train')
+        print('Creating train entity.')
         es = es.entity_from_dataframe(entity_id = 'train', dataframe = train, index = 'SK_ID_CURR')
+        print('Creating bureau entity.')
         es = es.entity_from_dataframe(entity_id = 'bureau', dataframe = bureau, index = 'SK_ID_BUREAU')
+        print('Creating bureau_bal entity.')
         es = es.entity_from_dataframe(entity_id = 'bureau_bal', dataframe = bureau_balance, make_index = True, index = 'bureau_bal_id')
+        print('Creating pos entity.')
         es = es.entity_from_dataframe(entity_id = 'pos', dataframe = pos, make_index = True, index = 'pos_id')
+        print('Creating cc_bal entity.')
         es = es.entity_from_dataframe(entity_id = 'cc_bal', dataframe = cc_bal, make_index = True, index = 'cc_bal_id')
+        print('Creating inst entity.')
         es = es.entity_from_dataframe(entity_id = 'inst', dataframe = inst, make_index = True, index = 'inst_id')
+        print('Creating prev_app entity.')
         es = es.entity_from_dataframe(entity_id = 'prev_app', dataframe = prev_app, index = 'SK_ID_PREV')
 
         print('Creating relationships.')

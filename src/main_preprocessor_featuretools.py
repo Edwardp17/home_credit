@@ -4,4 +4,4 @@ pre = p.Preprocessor()
 
 pre.run_feature_tools(export_to_csv = True)
 
-print('Everything complete!')
+print('featuretools matrix exported to CSV.')
