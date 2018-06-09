@@ -5,9 +5,10 @@ gc.enable()
 import random
 import numpy as np 
 import pandas as pd
+import featuretools as ft
 from scipy import stats
 
-DATA_PATH = '../input/'
+DATA_PATH = '../../../data/'
 DATASET_FILENAMES = []
 
 
@@ -45,7 +46,7 @@ class Dataset:
 
     def discover_binary_vars(self):
         
-        if self.data = None:
+        if self.data == None:
 
             raise Exception('Data cannot be None for binary vars to be discovered.')
         
@@ -98,10 +99,13 @@ class Preprocessor:
 
     def __init__(self):
         
-        self.datasets = None
+        self.datasets = []
 
         self.df_application_train_features = None
         self.df_bureau_features = None
+
+        self.featuretools_feature_set = None
+        self.featuretools_feature_names = None
 
     # ================
     # Class-level helper functions
@@ -113,9 +117,101 @@ class Preprocessor:
 
         for d in dataset_filenames:
 
-            dataset = Dataset(filename = d).read_data()
+            dataset = Dataset(filename = d)
+            dataset.read_data()
+            datasets.append(dataset)
 
         self.datasets = datasets
+
+
+    # ================================
+    # Featuretools
+    # ================================
+
+    def run_featuretools(self, read_in_data_if_needed = True, export_to_csv = False):
+
+        # TODO: This should eventually be dynamic.
+        dataset_filenames = ['POS_CASH_balance.csv', 'application_test.csv', 'application_train.csv', 'bureau.csv',\
+        'bureau_balance.csv', 'credit_card_balance.csv', 'installments_payments.csv', 'previous_application.csv']
+
+        if self.datasets == []:
+            self.read_all_data(dataset_filenames = dataset_filenames)
+        for data in self.datasets:
+            if data.name == 'POS_CASH_balance':
+                pos = data.data
+            elif data.name == 'application_test':
+                test = data.data
+            elif data.name == 'application_train':
+                train_full = data.data
+            elif data.name == 'bureau':
+                bureau = data.data
+            elif data.name == 'bureau_balance':
+                bureau_balance = data.data
+            elif data.name == 'credit_card_balance':
+                credit_card_balance = data.data
+            elif data.name == 'installments_payments':
+                installments_payments = data.data
+            elif data.name == 'previous_application':
+                previous_application = data.data
+        
+        train = train_full.drop('TARGET',axis = 1)
+        train_y = train_full['TARGET']
+
+        print('Creating entity.')
+
+        # Create new entityset
+        es = ft.EntitySet(id = 'train')
+        es = es.entity_from_dataframe(entity_id = 'train', dataframe = train, index = 'SK_ID_CURR')
+        es = es.entity_from_dataframe(entity_id = 'bureau', dataframe = bureau, index = 'SK_ID_BUREAU')
+        es = es.entity_from_dataframe(entity_id = 'bureau_bal', dataframe = bureau_balance, make_index = True, index = 'bureau_bal_id')
+        es = es.entity_from_dataframe(entity_id = 'pos', dataframe = pos, make_index = True, index = 'pos_id')
+        es = es.entity_from_dataframe(entity_id = 'cc_bal', dataframe = cc_bal, make_index = True, index = 'cc_bal_id')
+        es = es.entity_from_dataframe(entity_id = 'inst', dataframe = inst, make_index = True, index = 'inst_id')
+        es = es.entity_from_dataframe(entity_id = 'prev_app', dataframe = prev_app, index = 'SK_ID_PREV')
+
+        print('Creating relationships.')
+
+        # Create relationships
+        r_train_bureau = ft.Relationship(es['train']['SK_ID_CURR'], es['bureau']['SK_ID_CURR'])
+        es = es.add_relationship(r_train_bureau)
+        
+        r_bureau_bureau_bal = ft.Relationship(es['bureau']['SK_ID_BUREAU'], es['bureau_bal']['SK_ID_BUREAU'])
+        es = es.add_relationship(r_bureau_bureau_bal)
+        
+        r_train_pos = ft.Relationship(es['train']['SK_ID_CURR'], es['pos']['SK_ID_CURR'])
+        es = es.add_relationship(r_train_pos)
+        
+        r_train_cc_bal = ft.Relationship(es['train']['SK_ID_CURR'], es['cc_bal']['SK_ID_CURR'])
+        es = es.add_relationship(r_train_cc_bal)
+        
+        r_train_pos = ft.Relationship(es['train']['SK_ID_CURR'], es['pos']['SK_ID_CURR'])
+        es = es.add_relationship(r_train_pos)
+
+        r_train_inst = ft.Relationship(es['train']['SK_ID_CURR'], es['inst']['SK_ID_CURR'])
+        es = es.add_relationship(r_train_inst)
+
+        r_train_prev_app = ft.Relationship(es['train']['SK_ID_CURR'], es['prev_app']['SK_ID_CURR'])
+        es = es.add_relationship(r_train_prev_app)
+
+        # Create new features using specified primitives
+        # Documentation: https://docs.featuretools.com/generated/featuretools.dfs.html
+        features, feature_names = ft.dfs(entityset = es, target_entity = 'train', \
+        agg_primitives = ['mean', 'max', 'last'], \
+        trans_primitives = ['years', 'month', 'subtract', 'divide'])
+
+        self.featuretools_feature_set = features
+        self.featuretools_feature_names = feature_names
+
+        print('Done running featuretools!')
+
+        print('Exporting features to CSV.')
+
+        if export_to_csv:
+            pd.DataFrame(features).to_csv('featuretools_feature.csv')
+    
+    # ================================
+    # Manual FE
+    # ================================
 
     # ================
     # application_train
@@ -130,7 +226,7 @@ class Preprocessor:
 
                 df_application_train = df
         
-        if df_application_train = None:
+        if df_application_train == None:
 
             raise Exception('Could not find application_train in Preprocessor.datasets')
 
@@ -186,7 +282,7 @@ class Preprocessor:
 
                 df_bureau = df
         
-        if df_bureau = None:
+        if df_bureau == None:
 
             raise Exception('Could not find application_train in Preprocessor.datasets')
 
