@@ -8,7 +8,7 @@ import pandas as pd
 import featuretools as ft
 from scipy import stats
 
-DATA_PATH = '../../data/'
+DATA_PATH = '../data/'
 DATASET_FILENAMES = []
 
 
@@ -301,8 +301,8 @@ class Preprocessor:
         # Standardize binary vars
         # ================
 
-        df_application_train.discover_binary_vars()
-        df_application_train.transform_binary_features()
+        # df_application_train.discover_binary_vars()
+        # df_application_train.transform_binary_features()
 
         # ================
         # Get final feature set
@@ -310,7 +310,7 @@ class Preprocessor:
 
         self.df_application_train_features = df_application_train.data[[x for x in df_application_train.data.columns if x not in df_application_train.exclude_vars]]
 
-        print('df_application_train preprocessed. df.shape:' + str(df.shape))
+        print('df_application_train preprocessed. df.data.shape:' + str(df.data.shape))
         # we can get dummies after concatenating all of the processed datasets
         # self.df_application_train_features = pd.get_dummies(self.df_application_train_features)
 
@@ -343,7 +343,7 @@ class Preprocessor:
         # ================
 
         # get counts of previous loans
-        df_bureau_formatted = pd.DataFrame(df_bureau.groupby(by='SK_ID_CURR')['SK_ID_CURR'].count()).rename(columns={'SK_ID_CURR':'SK_ID_CURR_count'})
+        df_bureau_formatted = pd.DataFrame(df_bureau).groupby(by='SK_ID_CURR')['SK_ID_CURR'].count().rename(columns={'SK_ID_CURR':'SK_ID_CURR_count'})
 
         # get counts of former credit, by status
         # TODO: these functions by need an added 'self'
