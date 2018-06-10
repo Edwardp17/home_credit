@@ -271,7 +271,6 @@ class Preprocessor:
         if df_application_train == None:
 
             raise Exception('Could not find application_train in Preprocessor.datasets')
-
         
         # ================
         # Target variable, join key, exclude vars
@@ -343,16 +342,16 @@ class Preprocessor:
         # ================
 
         # get counts of previous loans
-        df_bureau_formatted = pd.DataFrame(df_bureau).groupby(by='SK_ID_CURR')['SK_ID_CURR'].count().rename(columns={'SK_ID_CURR':'SK_ID_CURR_count'})
+        df_bureau_formatted = pd.DataFrame(df_bureau.data.groupby(by='SK_ID_CURR')['SK_ID_CURR'].count()).rename(columns={'SK_ID_CURR':'SK_ID_CURR_count'})
 
         # get counts of former credit, by status
         # TODO: these functions by need an added 'self'
         def get_counts_by( df_bureau, feature_agg_col):
-            df_agg = pd.DataFrame(df_bureau.groupby(by=[df_bureau.join_key,feature_agg_col])[feature_agg_col].count()).rename(columns={feature_agg_col:feature_agg_col + '_count'}).reset_index()
+            df_agg = pd.DataFrame(df_bureau.data.groupby(by=[df_bureau.join_key,feature_agg_col])[feature_agg_col].count()).rename(columns={feature_agg_col:feature_agg_col + '_count'}).reset_index()
             df_agg.index = df_agg.SK_ID_CURR
 
             df_feature_count_full = pd.DataFrame()
-            for unique_val in df_bureau[feature_agg_col].unique():
+            for unique_val in df_bureau.data[feature_agg_col].unique():
                 df_feature_count = pd.DataFrame(df_agg.loc[df_agg[feature_agg_col] == unique_val, feature_agg_col + '_count'])
                 df_feature_count = df_feature_count.rename(columns={feature_agg_col + '_count':feature_agg_col + '_count_' + unique_val})
                 if len(df_feature_count_full) > 0:
@@ -367,11 +366,11 @@ class Preprocessor:
         df_bureau_formatted.merge(df_status_count_full,how='left',left_index=True,right_index=True)
 
         # get unique number of currencies that previous credits exist in, for each current application
-        df_bureau_formatted.merge(pd.DataFrame(df_bureau.groupby(by='SK_ID_CURR')['CREDIT_CURRENCY'].nunique()).rename(columns={'CREDIT_CURRENCY':'CREDIT_CURRENCY_unique'}),\
+        df_bureau_formatted.merge(pd.DataFrame(df_bureau.data.groupby(by='SK_ID_CURR')['CREDIT_CURRENCY'].nunique()).rename(columns={'CREDIT_CURRENCY':'CREDIT_CURRENCY_unique'}),\
         how='left',left_index=True,right_index=True)
 
         # get most recent number of days a credit was extend before the current application
-        df_bureau_formatted.merge(pd.DataFrame(df_bureau.groupby(by='SK_ID_CURR')['DAYS_CREDIT'].min()).rename(columns={'DAYS_CREDIT':'DAYS_CREDIT_min'}),\
+        df_bureau_formatted.merge(pd.DataFrame(df_bureau.data.groupby(by='SK_ID_CURR')['DAYS_CREDIT'].min()).rename(columns={'DAYS_CREDIT':'DAYS_CREDIT_min'}),\
         how='left',left_index=True,right_index=True)
 
         # TODO: get average number of days in between applications
@@ -380,17 +379,17 @@ class Preprocessor:
         def get_min_average_max( df_bureau_formatted, col, min = True, average = True, max = True):
             if min:
                 # get min
-                df_bureau_formatted.merge(pd.DataFrame(df_bureau.groupby(by='SK_ID_CURR')[col].min()).rename(columns={col:col+'_min'}),\
+                df_bureau_formatted.merge(pd.DataFrame(df_bureau.data.groupby(by='SK_ID_CURR')[col].min()).rename(columns={col:col+'_min'}),\
                 how='left',left_index=True,right_index=True)
 
             if average:
                 # get average
-                df_bureau_formatted.merge(pd.DataFrame(df_bureau.groupby(by='SK_ID_CURR')[col].mean()).rename(columns={col:col+'_mean'}),\
+                df_bureau_formatted.merge(pd.DataFrame(df_bureau.data.groupby(by='SK_ID_CURR')[col].mean()).rename(columns={col:col+'_mean'}),\
                 how='left',left_index=True,right_index=True)
 
             if max:
                 # get max
-                df_bureau_formatted.merge(pd.DataFrame(df_bureau.groupby(by='SK_ID_CURR')[col].max()).rename(columns={col:col+'_max'}),\
+                df_bureau_formatted.merge(pd.DataFrame(df_bureau.data.groupby(by='SK_ID_CURR')[col].max()).rename(columns={col:col+'_max'}),\
                 how='left',left_index=True,right_index=True)
 
             return df_bureau_formatted
@@ -411,8 +410,8 @@ class Preprocessor:
 
         df_bureau_formatted_dataset = Dataset(data=df_bureau_formatted)
 
-        df_bureau_formatted_dataset.discover_binary_vars()
-        df_bureau_formatted_dataset.transform_binary_features()
+        # df_bureau_formatted_dataset.discover_binary_vars()
+        # df_bureau_formatted_dataset.transform_binary_features()
 
         # ================
         # Get final feature set
@@ -420,4 +419,4 @@ class Preprocessor:
 
         self.df_bureau_features = df_bureau_formatted_dataset.data
 
-        print('df_bureau preprocessed. df.shape:' + str(df.shape))
+        print('df_bureau preprocessed. df.data.shape:' + str(df.data.shape))
