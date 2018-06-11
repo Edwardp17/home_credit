@@ -83,15 +83,21 @@ class Dataset:
     def get_num_percentiles_partitioned_by_cat_var(self, cat_vars = [], num_vars = []):
 
         if cat_vars == []:
-            cat_vars = [col for col in self.data.columns if type(self.data[col][0]) == str]
+            cat_vars = [col for col in self.data.columns if self.data[col].dtype in [str,'O'] and col != 'TARGET']
 
         if num_vars == []:
-            num_vars = [col for col in self.data.columns if type(self.data[col][0]) in [int, float]]
-
-        for cat_var in cat_vars:
+            num_vars = [col for col in self.data.columns if self.data[col].dtype in [int, float] and col != 'TARGET']
+        print(len(cat_vars))
+        print(len(num_vars))
+        c = []
+        for i, cat_var in enumerate(cat_vars):
+            print('Each percentage is all num_vars per cat_vars done')
+            print('Round ' + str(i+1))
+            print(str(pd.Timestamp.now()))
             for num_var in num_vars:
-
                 self.data[str(cat_var) + '_' + str(num_var) + '_rankpartition'] = self.data.groupby(cat_var)[num_var].rank()
+            c.append(cat_var)
+            print('Percentage done ' + str(len(c)/len(cat_vars)))
         
 
 class Preprocessor:
@@ -275,11 +281,10 @@ class Preprocessor:
         # ================
         # Target variable, join key, exclude vars
         # ================
-
-        df_application_train.target = df_application_train.data['TARGET']
+        if dataset_name == 'application_train':
+            df_application_train.target = df_application_train.data['TARGET']
+            df_application_train.exclude_vars = ['TARGET']
         df_application_train.join_key = ['SK_ID_CURR']
-        df_application_train.exclude_vars = ['TARGET']
-
         # ================
         # Cleaning
         # ================
