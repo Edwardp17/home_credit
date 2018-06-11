@@ -91,13 +91,12 @@ class Dataset:
         print(len(num_vars))
         c = []
         for i, cat_var in enumerate(cat_vars):
-            print('Each percentage is all num_vars per cat_vars done')
             print('Round ' + str(i+1))
             print(str(pd.Timestamp.now()))
             for num_var in num_vars:
                 self.data[str(cat_var) + '_' + str(num_var) + '_rankpartition'] = self.data.groupby(cat_var)[num_var].rank()
             c.append(cat_var)
-            print('Percentage done ' + str(len(c)/len(cat_vars)))
+            print('Percentage done: ' + str(len(c)/len(cat_vars)))
         
 
 class Preprocessor:
