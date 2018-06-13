@@ -107,5 +107,5 @@ venv.bak/
 .mypy_cache/
 
 #outputs
-.output/train_features.csv
-.output/test_features.csv
+output/train_features.csv
+output/test_features.csv
