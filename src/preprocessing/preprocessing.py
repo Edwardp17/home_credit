@@ -8,6 +8,11 @@ import pandas as pd
 import featuretools as ft
 from scipy import stats
 
+# Kaggle
+# DATA_PATH = '../input/'
+
+#Local
+
 DATA_PATH = '../data/'
 DATASET_FILENAMES = []
 
@@ -242,19 +247,109 @@ class Preprocessor:
 
         print('Creating actual features.')
         print(str(pd.Timestamp.now()))
-        features, feature_names = ft.dfs(entityset = es, target_entity = 'train', \
-        agg_primitives = ['mean', 'max', 'last'], \
-        trans_primitives = ['years', 'month', 'subtract', 'divide'])
+        feature_matrix, feature_defs = ft.dfs(entityset = es, target_entity = 'train', \
+        agg_primitives = ['mean', 'max', 'last']
+        # trans_primitives = ['years', 'month', 'subtract', 'divide']
+        )
 
-        self.featuretools_feature_set = features
-        self.featuretools_feature_names = feature_names
+        self.featuretools_feature_set = feature_matrix
+        self.featuretools_feature_names = feature_defs
+
+        # One hot encode categorical features
+        feature_matrix_enc, feature_defs_enc = ft.encode_features(feature_matrix, feature_defs)
+     
+        # Create entity set for test
+        print('Creating test entity')
+        ts = ft.EntitySet(id = 'test')
+        print('Creating test entity.')
+        print(str(pd.Timestamp.now()))
+        ts = ts.entity_from_dataframe(entity_id = 'test', dataframe = test, index = 'SK_ID_CURR')
+        print('Creating bureau entity.')
+        print(str(pd.Timestamp.now()))
+        ts = ts.entity_from_dataframe(entity_id = 'bureau', dataframe = bureau, index = 'SK_ID_BUREAU')
+        print('Creating bureau_bal entity.')
+        print(str(pd.Timestamp.now()))
+        ts = ts.entity_from_dataframe(entity_id = 'bureau_bal', dataframe = bureau_balance, make_index = True, index = 'bureau_bal_id')
+        print('Creating pos entity.')
+        print(str(pd.Timestamp.now()))
+        ts = ts.entity_from_dataframe(entity_id = 'pos', dataframe = pos, make_index = True, index = 'pos_id')
+        print('Creating cc_bal entity.')
+        print(str(pd.Timestamp.now()))
+        ts = ts.entity_from_dataframe(entity_id = 'cc_bal', dataframe = cc_bal, make_index = True, index = 'cc_bal_id')
+        print('Creating inst entity.')
+        print(str(pd.Timestamp.now()))
+        ts = ts.entity_from_dataframe(entity_id = 'inst', dataframe = inst, make_index = True, index = 'inst_id')
+        print('Creating prev_app entity.')
+        print(str(pd.Timestamp.now()))
+        ts = ts.entity_from_dataframe(entity_id = 'prev_app', dataframe = prev_app, index = 'SK_ID_PREV')
+
+        print('Creating relationships.')
+        print(str(pd.Timestamp.now()))
+
+        # Create relationships
+        print('Creating r_test_bureau.')
+        print(str(pd.Timestamp.now()))
+        r_test_bureau = ft.Relationship(ts['test']['SK_ID_CURR'], ts['bureau']['SK_ID_CURR'])
+        ts = ts.add_relationship(r_test_bureau)
+        
+        print('Creating r_bureau_bureau_bal.')
+        print(str(pd.Timestamp.now()))
+        r_bureau_bureau_bal = ft.Relationship(ts['bureau']['SK_ID_BUREAU'], ts['bureau_bal']['SK_ID_BUREAU'])
+        ts = ts.add_relationship(r_bureau_bureau_bal)
+        
+        print('Creating r_test_pos.')
+        print(str(pd.Timestamp.now()))
+        r_test_pos = ft.Relationship(ts['test']['SK_ID_CURR'], ts['pos']['SK_ID_CURR'])
+        ts = ts.add_relationship(r_test_pos)
+        
+        print('Creating r_test_cc_bal.')
+        print(str(pd.Timestamp.now()))
+        r_test_cc_bal = ft.Relationship(ts['test']['SK_ID_CURR'], ts['cc_bal']['SK_ID_CURR'])
+        ts = ts.add_relationship(r_test_cc_bal)
+
+        print('Creating r_test_inst.')
+        print(str(pd.Timestamp.now()))
+        r_test_inst = ft.Relationship(ts['test']['SK_ID_CURR'], ts['inst']['SK_ID_CURR'])
+        ts = ts.add_relationship(r_test_inst)
+
+        print('Creating r_test_prev_app.')
+        print(str(pd.Timestamp.now()))
+        r_test_prev_app = ft.Relationship(ts['test']['SK_ID_CURR'], ts['prev_app']['SK_ID_CURR'])
+        ts = ts.add_relationship(r_test_prev_app)
+
+        print('Creating r_prev_app_pos.')
+        print(str(pd.Timestamp.now()))
+        r_prev_app_pos = ft.Relationship(ts['prev_app']['SK_ID_PREV'], ts['pos']['SK_ID_PREV'])
+        ts = ts.add_relationship(r_prev_app_pos)
+
+        print('Creating r_prev_app_inst.')
+        print(str(pd.Timestamp.now()))
+        r_prev_app_inst = ft.Relationship(ts['prev_app']['SK_ID_PREV'], ts['inst']['SK_ID_PREV'])
+        ts = ts.add_relationship(r_prev_app_inst)
+
+        print('Creating r_prev_app_cc_bal.')
+        print(str(pd.Timestamp.now()))
+        r_prev_app_cc_bal = ft.Relationship(ts['prev_app']['SK_ID_PREV'], ts['cc_bal']['SK_ID_PREV'])
+        ts = ts.add_relationship(r_prev_app_cc_bal)
+
+        # Create new features using specified primitives
+        # Documentation: https://docs.featuretools.com/generated/featuretools.dfs.html
+
+        print('Creating actual features.')
+        print(str(pd.Timestamp.now()))
+        feature_matrix_test = ft.calculate_feature_matrix(features=feature_matrix_enc, entityset='test')
+
+        # One hot encode categorical features
+        feature_matrix_test_enc, feature_defs_test_enc = ft.encode_features(feature_matrix_test, feature_defs)
 
         print('Done running featuretools!')
 
         print('Exporting features to CSV.')
 
         if export_to_csv:
-            pd.DataFrame(features).to_csv('featuretools_feature.csv')
+            pd.DataFrame(feature_matrix_enc).to_csv('featuretools_feature.csv')
+            train_y.to_csv('train_y.csv')
+            pd.DataFrame(feature_matrix_test_enc).to_csv('featuretools_features_test.csv')
     
     # ================================
     # Manual FE
@@ -276,6 +371,12 @@ class Preprocessor:
         if df_application_train == None:
 
             raise Exception('Could not find application_train in Preprocessor.datasets')
+
+        # Scale down and balance train
+        if dataset_name == 'application_train':
+            df_application_train_1 = df_application_train.data[df_application_train.data['TARGET']==1]
+            df_application_train_0 = df_application_train.data[df_application_train.data['TARGET']==0].head(24825)
+            df_application_train.data = pd.concat([df_application_train_1,df_application_train_0])
         
         # ================
         # Target variable, join key, exclude vars
@@ -310,9 +411,12 @@ class Preprocessor:
         # ================
         # Get final feature set
         # ================
-
-        self.df_application_train_features = df_application_train.data[[x for x in df_application_train.data.columns if x not in df_application_train.exclude_vars]]
-
+        if dataset_name == 'application_test':
+            self.df_application_test_features = df_application_train.data[[x for x in df_application_train.data.columns if x not in df_application_train.exclude_vars]]
+        elif dataset_name == 'application_train':
+            self.df_application_train_features = df_application_train.data[[x for x in df_application_train.data.columns if x not in df_application_train.exclude_vars]]
+        elif:
+            print('Error variable "dataset_name" not set')
         print('df_application_train preprocessed. df.data.shape:' + str(df.data.shape))
         # we can get dummies after concatenating all of the processed datasets
         # self.df_application_train_features = pd.get_dummies(self.df_application_train_features)
