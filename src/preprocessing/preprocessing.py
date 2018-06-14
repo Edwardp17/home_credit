@@ -415,8 +415,6 @@ class Preprocessor:
             self.df_application_test_features = df_application_train.data[[x for x in df_application_train.data.columns if x not in df_application_train.exclude_vars]]
         elif dataset_name == 'application_train':
             self.df_application_train_features = df_application_train.data[[x for x in df_application_train.data.columns if x not in df_application_train.exclude_vars]]
-        elif:
-            print('Error variable "dataset_name" not set')
         print('df_application_train preprocessed. df.data.shape:' + str(df.data.shape))
         # we can get dummies after concatenating all of the processed datasets
         # self.df_application_train_features = pd.get_dummies(self.df_application_train_features)
