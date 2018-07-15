@@ -311,9 +311,9 @@ def credit_card_balance(num_rows = None, nan_as_category = True):
 # Parameters from Tilii kernel: https://www.kaggle.com/tilii7/olivier-lightgbm-parameters-by-bayesian-opt/code
 def kfold_lightgbm(df, num_folds, stratified = False, debug = False, error_analysis = False):
     # Clustering
-    df_tf = df.drop('TARGET', axis = 1)
-    elbow_method(df_tf)
-    y_kmeans, cent = doKMeans(df_tf, num_clusters = 5)
+    X = df.drop('TARGET', axis = 1)
+    elbow_method(X)
+    y_kmeans, cent = doKMeans(X, num_clusters = 5)
     kmeans_df = pd.DataFrame(y_kmeans)
     clust_df = df.copy()
     clust_df['kmeans'] = kmeans_df
@@ -457,15 +457,16 @@ def main(debug = False, error_analysis = False):
         del cc
         gc.collect()
     with timer("Run LightGBM with kfold"):
-        val_df, feat_importance = kfold_lightgbm(df, num_folds= 5, stratified= True, debug = debug, error_analysis = error_analysis)
         if error_analysis:
+            val_df, feat_importance = kfold_lightgbm(df, num_folds= 5, stratified= True, debug = debug, error_analysis = error_analysis)
             feat_importance.to_csv('feat_importance.csv', index = False)
             val_df.to_csv('error_analysis.csv', index = False)
         else:
+            feat_importance = kfold_lightgbm(df, num_folds= 5, stratified= True, debug = debug, error_analysis = error_analysis)
             return feat_importance
         
 
 if __name__ == "__main__":
     submission_file_name = "submission_kernel02.csv"
     with timer("Full model run"):
-        main(debug = True, error_analysis = True)
+        main(debug = True, error_analysis = False)
