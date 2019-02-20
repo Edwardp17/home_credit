@@ -1,3 +1,2 @@
-# Private
-Private GitHub repo
+# Home Credit Default - Kaggle Challenge
 
